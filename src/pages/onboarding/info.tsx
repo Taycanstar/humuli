@@ -3,13 +3,13 @@ import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import LogoLayout from "@/components/LogoLayout";
 import { NavLink } from "@/components/NavLink";
 import { useRouter } from "next/router";
-import { FiEyeOff, FiEye } from "react-icons/fi";
 
-const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
+const Info: React.FC & { Layout?: React.ComponentType<any> } = () => {
   const [email, setEmail] = useState<string>("");
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault(); // Prevent the default form submission behavior.
@@ -54,7 +54,11 @@ const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
   };
 
   // Event handler for email input changes
-  const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFirstNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setEmail(event.target.value);
+  };
+
+  const handleLastNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     setEmail(event.target.value);
   };
 
@@ -64,10 +68,6 @@ const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
   };
   const isPasswordValid = () => password.length >= 8;
 
-  const handleTogglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
     <div className="flex min-h-full flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-sm space-y-10">
@@ -75,65 +75,62 @@ const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
           <div className="flex items-center justify-center space-x-3"></div>
 
           <h2 className="mt-1 text-2xl font-bold leading-9 tracking-tight text-gray-900">
-            Create your account
+            Give us a glimpse about yourself{" "}
           </h2>
         </div>
 
         <form
-          className="space-y-2"
+          className="space-y-6"
           action="#"
           method="POST"
           onSubmit={handleSubmit}
         >
-          <div className="relative rounded-md shadow-sm ">
-            <div className="pointer-events-none absolute inset-0 z-10 rounded-md ring-1 ring-inset ring-gray-300" />
-            <div className="">
-              <label htmlFor="email-address" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="relative block w-full rounded-t-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-100 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6 rounded-b-md "
-                placeholder="Email address"
-                value={email}
-                onChange={handleEmailChange}
-              />
+          <div className="relative -space-y-px rounded-md shadow-sm">
+            <div className="flex space-x-2">
+              <div className="w-1/2">
+                <label className="sr-only">First Name:</label>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={firstName}
+                  onChange={handleFirstNameChange}
+                  required
+                  maxLength={255}
+                  autoComplete="given-name"
+                  className="relative block w-full rounded-t-md rounded-b-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-100 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
+                  placeholder="First Name" // Add a placeholder for the input
+                />
+              </div>
+              <div className="w-1/2">
+                <label className="sr-only">Last Name:</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={lastName}
+                  onChange={handleLastNameChange}
+                  required
+                  maxLength={255}
+                  autoComplete="family-name"
+                  className="relative block w-full rounded-t-md rounded-b-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-100 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
+                  placeholder="Last Name" // Add a placeholder for the input
+                />
+              </div>
             </div>
-          </div>
-          <div className="relative rounded-md shadow-sm ">
-            <div className="pointer-events-none absolute inset-0 z-10 rounded-md ring-1 ring-inset ring-gray-300" />
-            <div className="relative ">
+            <div className="pt-2">
               <label htmlFor="password" className="sr-only">
                 Password
               </label>
               <input
                 id="password"
                 name="password"
-                type={showPassword ? "text" : "password"}
+                type="password"
                 autoComplete="current-password"
                 required
-                className="relative block w-full rounded-b-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-100 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6 rounded-b-md "
+                className="relative block w-full rounded-b-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-100 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
                 placeholder="Password"
                 value={password} // Set value from state
                 onChange={handlePasswordChange} // Set state on change
               />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                {showPassword ? (
-                  <FiEyeOff
-                    className="h-5 w-5 text-gray-400 cursor-pointer"
-                    onClick={handleTogglePasswordVisibility}
-                  />
-                ) : (
-                  <FiEye
-                    className="h-5 w-5 text-gray-400 cursor-pointer"
-                    onClick={handleTogglePasswordVisibility}
-                  />
-                )}
-              </div>
             </div>
           </div>
           {!isPasswordValid() && password.length > 0 && (
@@ -142,7 +139,7 @@ const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
             </p>
           )}
 
-          <div className="py-2">
+          <div>
             <button
               type="submit"
               className={`flex w-full justify-center rounded-md bg-blue-400 px-3 py-2.5 text-lg font-bold leading-6 text-white ${
@@ -175,5 +172,5 @@ const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
   );
 };
 
-Signup.Layout = LogoLayout;
-export default Signup;
+Info.Layout = LogoLayout;
+export default Info;
