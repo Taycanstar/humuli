@@ -10,13 +10,15 @@ const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
   const [password, setPassword] = useState<string>("");
   const router = useRouter();
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [isError, setIsError] = useState<boolean>(false);
+  const [errorText, setErrorText] = useState<string>("");
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault(); // Prevent the default form submission behavior.
     console.log("Submitting form", { email, password });
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/verify-email/", {
+      const response = await fetch("http://127.0.0.1:8000/signup/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -28,22 +30,27 @@ const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
           // Don't send confirmationToken from client-side
         }),
       });
-      console.log("hi");
 
       const data = await response.json();
 
       // Check if the request was successful
       if (response.ok) {
         console.log("Verification email sent successfully:", data.message);
-        // Navigate to the next page or display a success message
-        // Navigate to the new page with email as a query parameter
+
         router.push({
           pathname: "/onboarding/verify-email",
           query: { email: email.toLowerCase(), password: password },
         });
       } else {
         // Handle errors, such as displaying a message to the user
-        console.error("Failed to send verification email:", data.message);
+        console.error("Failed to send verification email:", data.error);
+        setIsError(true);
+        setErrorText(data.error);
+
+        setTimeout(() => {
+          setIsError(false);
+          setErrorText("");
+        }, 5000);
       }
     } catch (error) {
       console.error(
@@ -121,7 +128,7 @@ const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
                 value={password} // Set value from state
                 onChange={handlePasswordChange} // Set state on change
               />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center z-10">
                 {showPassword ? (
                   <FiEyeOff
                     className="h-5 w-5 text-gray-400 cursor-pointer"
@@ -141,6 +148,8 @@ const Signup: React.FC & { Layout?: React.ComponentType<any> } = () => {
               Password must be at least 8 characters.
             </p>
           )}
+
+          {isError && <p className="text-sm text-red-600">{errorText}</p>}
 
           <div className="py-2">
             <button

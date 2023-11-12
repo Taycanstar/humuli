@@ -3,70 +3,168 @@ import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import LogoLayout from "@/components/LogoLayout";
 import { NavLink } from "@/components/NavLink";
 import { useRouter } from "next/router";
+import { AppDispatch } from "../../store";
+import { useSelector, useDispatch } from "react-redux";
+import { addInfo, signup } from "@/store/user";
+import { unwrapResult } from "@reduxjs/toolkit";
+import { LOCAL } from "@/constants";
+import axios from "axios";
 
+const url = "http://127.0.0.1:8000";
 const Info: React.FC & { Layout?: React.ComponentType<any> } = () => {
-  const [email, setEmail] = useState<string>("");
+  const router = useRouter();
+  const { token, email } = router.query;
   const [firstName, setFirstName] = useState<string>("");
   const [lastName, setLastName] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const router = useRouter();
+  const [birthday, setBirthday] = useState<string>("");
+  const [org, setOrg] = useState<string>("");
+  const dispatch = useDispatch<AppDispatch>();
+  const [num, setNum] = useState<string>("");
+  const [formError, setFormError] = useState("");
+  const [isError, setIsError] = useState(false);
+
+  const handleBdChange = (inputValue: string) => {
+    const input = inputValue.replace(/\D/g, ""); // Remove non-digit characters
+    let formattedDate = "";
+
+    if (input.length > 0) {
+      formattedDate += input.substr(0, 2);
+    }
+    if (input.length > 2) {
+      formattedDate += "/" + input.substr(2, 2);
+    }
+    if (input.length > 4) {
+      formattedDate += "/" + input.substr(4, 4);
+    }
+
+    setBirthday(formattedDate);
+  };
+
+  const handleBirthdayChange = (event: ChangeEvent<HTMLInputElement>) => {
+    handleBdChange(event.target.value);
+  };
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const currentValue = event.target.value;
+    if (num === "" && currentValue !== "+") {
+      setNum("+1" + currentValue);
+    } else {
+      setNum(currentValue);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault(); // Prevent the default form submission behavior.
-    console.log("Submitting form", { email, password });
+    event.preventDefault();
+    // Check if the required fields are filled
+    if (
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !birthday.trim() ||
+      !num.trim()
+    ) {
+      setFormError("Please fill in all required fields.");
+      setIsError(true);
+      return;
+    }
 
-    try {
-      const response = await fetch("http://127.0.0.1:8000/verify-email/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // 'X-CSRFToken': csrfToken // Include this if CSRF is used.
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-          // Don't send confirmationToken from client-side
-        }),
-      });
-      console.log("hi");
-
-      const data = await response.json();
-
-      // Check if the request was successful
-      if (response.ok) {
-        console.log("Verification email sent successfully:", data.message);
-        // Navigate to the next page or display a success message
-        // Navigate to the new page with email as a query parameter
+    if (!isError) {
+      try {
+        const resultAction = await dispatch(
+          addInfo({
+            email: email as string,
+            firstName: firstName,
+            lastName: lastName,
+            organization: org,
+            phoneNumber: num,
+            birthday,
+          })
+        );
+        unwrapResult(resultAction);
+        // Handle success here
         router.push({
-          pathname: "/onboarding/verify-email",
-          query: { email: email.toLowerCase(), password: password },
+          pathname: "/onboarding/verify-phone",
+          query: { email: email, phoneNumber: num },
         });
-      } else {
-        // Handle errors, such as displaying a message to the user
-        console.error("Failed to send verification email:", data.message);
+        console.log("add info successful");
+      } catch (error: any) {
+        // Handle error here
+        console.error("add info error:", error);
+        // Directly use the error message from the backend
+        setFormError(error.message || "Invalid phone number");
+        setIsError(true);
       }
-    } catch (error) {
-      console.error(
-        "An error occurred while sending the verification email:",
-        error
-      );
     }
   };
 
   // Event handler for email input changes
   const handleFirstNameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setEmail(event.target.value);
+    setFirstName(event.target.value);
   };
 
   const handleLastNameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setEmail(event.target.value);
+    setLastName(event.target.value);
   };
 
-  // Event handler for password input changes
-  const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setPassword(event.target.value);
+  const handleOrgChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setOrg(event.target.value);
   };
-  const isPasswordValid = () => password.length >= 8;
+  useEffect(() => {
+    const confirmUser = async () => {
+      if (token && email) {
+        try {
+          const response = await fetch(`${LOCAL}/confirm-email/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // 'X-CSRFToken': csrfToken // Include this if CSRF is used.
+            },
+            body: JSON.stringify({
+              email: email,
+              confirmationToken: token,
+              // Don't send confirmationToken from client-side
+            }),
+          });
+
+          const data = await response.json();
+
+          // Check if the request was successful
+          if (response.ok) {
+            console.log("Email verified", data.message);
+          } else {
+            // Handle errors, such as displaying a message to the user
+            console.error("Failed to verify email", data.message);
+          }
+        } catch (error) {
+          console.error(
+            "An error occurred while sending the verification email:",
+            error
+          );
+        }
+      }
+    };
+
+    if (token && email) {
+      confirmUser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, email]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+
+    if (isError) {
+      timer = setTimeout(() => {
+        setIsError(false);
+        setFormError("");
+      }, 5000);
+    }
+
+    // Clear the timer when the component unmounts or isError changes
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [isError]);
 
   return (
     <div className="flex min-h-full flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
@@ -85,69 +183,74 @@ const Info: React.FC & { Layout?: React.ComponentType<any> } = () => {
           method="POST"
           onSubmit={handleSubmit}
         >
-          <div className="relative -space-y-px rounded-md shadow-sm">
+          <div className="space-y-2">
             <div className="flex space-x-2">
-              <div className="w-1/2">
-                <label className="sr-only">First Name:</label>
+              <div className="flex-1">
                 <input
                   type="text"
                   name="firstName"
+                  id="first-name"
                   value={firstName}
+                  placeholder="First Name"
+                  className="relative block w-full rounded-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
                   onChange={handleFirstNameChange}
-                  required
-                  maxLength={255}
-                  autoComplete="given-name"
-                  className="relative block w-full rounded-t-md rounded-b-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-100 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
-                  placeholder="First Name" // Add a placeholder for the input
                 />
               </div>
-              <div className="w-1/2">
-                <label className="sr-only">Last Name:</label>
+              {/* Last Name */}
+              <div className="flex-1">
                 <input
                   type="text"
                   name="lastName"
+                  id="last-name"
                   value={lastName}
+                  placeholder="Last name"
+                  className="relative block w-full rounded-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
                   onChange={handleLastNameChange}
-                  required
-                  maxLength={255}
-                  autoComplete="family-name"
-                  className="relative block w-full rounded-t-md rounded-b-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-100 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
-                  placeholder="Last Name" // Add a placeholder for the input
                 />
               </div>
             </div>
-            <div className="pt-2">
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
+
+            <div>
               <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="relative block w-full rounded-b-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-100 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
-                placeholder="Password"
-                value={password} // Set value from state
-                onChange={handlePasswordChange} // Set state on change
+                type="text"
+                name="organization"
+                value={org}
+                id="organization"
+                placeholder="Organization (Optional)"
+                className="relative block w-full rounded-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
+                onChange={handleOrgChange}
+              />
+            </div>
+
+            <div>
+              <input
+                type="text"
+                name="birthday"
+                placeholder="MM/DD/YYYY"
+                id="birthday"
+                value={birthday}
+                className="relative block w-full rounded-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
+                onChange={handleBirthdayChange}
+              />
+            </div>
+            <div>
+              <input
+                type="text"
+                name="phone number"
+                placeholder="Phone number"
+                value={num}
+                id="num"
+                className="relative block w-full rounded-md border-0 py-2.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-200 sm:text-sm sm:leading-6"
+                onChange={handleInputChange}
               />
             </div>
           </div>
-          {!isPasswordValid() && password.length > 0 && (
-            <p className="text-sm text-red-600">
-              Password must be at least 8 characters.
-            </p>
-          )}
+          {isError && <p className="text-sm text-red-600">{formError}</p>}
 
           <div>
             <button
               type="submit"
-              className={`flex w-full justify-center rounded-md bg-blue-400 px-3 py-2.5 text-lg font-bold leading-6 text-white ${
-                isPasswordValid()
-                  ? "hover:bg-blue-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-300"
-                  : "opacity-50 cursor-not-allowed"
-              }`}
-              disabled={!isPasswordValid()}
+              className="flex w-full justify-center rounded-md bg-blue-400 px-3 py-2.5 text-sm font-semibold leading-6 text-white hover:bg-blue-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
             >
               Continue
             </button>

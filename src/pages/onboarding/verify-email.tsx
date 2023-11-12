@@ -1,9 +1,45 @@
 import { SlimLayout } from "@/components/SlimLayout";
 import React from "react";
 import LogoLayout from "@/components/LogoLayout";
+import { useRouter } from "next/router";
 import { NavLink } from "@/components/NavLink";
+import { LOCAL } from "@/constants";
 
 const VerifyEmail: React.FC & { Layout?: React.ComponentType<any> } = () => {
+  const router = useRouter();
+  const { email } = router.query;
+  const handleResendEmail = async () => {
+    if (email) {
+      try {
+        const response = await fetch(`${LOCAL}/resend-email/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // 'X-CSRFToken': csrfToken // Include this if CSRF is used.
+          },
+          body: JSON.stringify({
+            email: email,
+            // Don't send confirmationToken from client-side
+          }),
+        });
+
+        const data = await response.json();
+
+        // Check if the request was successful
+        if (response.ok) {
+          console.log("Email sent", data.message);
+        } else {
+          // Handle errors, such as displaying a message to the user
+          console.error("Failed to send email", data.message);
+        }
+      } catch (error) {
+        console.error(
+          "An error occurred while sending the verification email:",
+          error
+        );
+      }
+    }
+  };
   return (
     <div className="flex min-h-full flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-sm space-y-2">
@@ -17,16 +53,17 @@ const VerifyEmail: React.FC & { Layout?: React.ComponentType<any> } = () => {
 
         <div className="flex items-center justify-center">
           <label className="text-center block text-sm text-gray-900">
-            We sent an email to email Click the link inside to get started
+            We sent an email to {email} Click the link inside to get started
           </label>
         </div>
         <div className="flex text-sm leading-6 py-5 justify-center items-center">
-          <a
-            href="#"
+          <button
+            type="button"
+            onClick={handleResendEmail}
             className="font-semibold text-blue-400 hover:text-blue-300"
           >
             Resend email
-          </a>
+          </button>
         </div>
       </div>
     </div>
